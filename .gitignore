@@ -1,0 +1,42 @@
+﻿# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# Node / Next
+node_modules/
+.next/
+out/
+dist/
+build/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Uploads / resumes / generated files
+uploads/
+media/
+resumes/
+*.pdf
+*.docx
+
+# DB files
+*.db
+*.sqlite3
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Backup folders
+frontend - Copy/
