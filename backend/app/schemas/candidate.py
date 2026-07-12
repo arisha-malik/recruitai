@@ -26,6 +26,11 @@ class ParsedResumeDataOut(BaseModel):
 class ResumeOut(BaseModel):
     id: str
     file_name: str
+    original_filename: Optional[str] = None
+    stored_filename: Optional[str] = None
+    storage_path: Optional[str] = None
+    candidate_primary_designation: Optional[str] = None
+    primary_skill: Optional[str] = None
     s3_key: str
     s3_bucket: str
     parsing_status: str

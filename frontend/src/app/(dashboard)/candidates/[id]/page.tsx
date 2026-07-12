@@ -31,6 +31,11 @@ import {
 interface ResumeData {
   id: string;
   file_name: string;
+  original_filename?: string;
+  stored_filename?: string;
+  storage_path?: string;
+  candidate_primary_designation?: string;
+  primary_skill?: string;
   parsing_status: string;
   created_at: string;
   parsed_data?: {
@@ -482,6 +487,34 @@ export default function CandidateDetailPage({ params }: { params: Promise<{ id: 
                   </div>
                 )}
               </div>
+              
+              {resume && (
+                <div className="mt-6 pt-4 border-t border-border/50 space-y-3.5">
+                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Resume Storage Details</h4>
+                  <div className="flex flex-col gap-1 py-1 border-b border-border/50 text-sm">
+                    <span className="text-slate-400 text-xs">Original Filename</span>
+                    <span className="font-semibold text-slate-200 break-all">{resume.original_filename || resume.file_name}</span>
+                  </div>
+                  {(resume.stored_filename || resume.storage_path) && (
+                    <>
+                      <div className="flex flex-col gap-1 py-1 border-b border-border/50 text-sm">
+                        <span className="text-slate-400 text-xs">Stored Filename</span>
+                        <span className="font-semibold text-slate-200 break-all">{resume.stored_filename}</span>
+                      </div>
+                      <div className="flex flex-col gap-1 py-1 border-b border-border/50 text-sm">
+                        <span className="text-slate-400 text-xs">Storage Path / Key</span>
+                        <span className="font-semibold text-slate-200 break-all text-xs font-mono bg-slate-800/50 p-1.5 rounded">{resume.storage_path || resume.s3_key}</span>
+                      </div>
+                      <div className="flex flex-col gap-1 py-1 border-b border-border/50 text-sm">
+                        <span className="text-slate-400 text-xs">Main Designation / Primary Skill</span>
+                        <span className="font-semibold text-slate-200">
+                          {resume.candidate_primary_designation || resume.primary_skill || 'N/A'}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </Card>
 
             {/* Skills */}

@@ -28,8 +28,9 @@ class Settings:
     AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID", "")
     AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", "")
     AWS_REGION: str = os.getenv("AWS_REGION", "us-east-1")
-    AWS_S3_BUCKET: str = os.getenv("AWS_S3_BUCKET", "recruitai-resumes")
-    S3_BUCKET_NAME: str = os.getenv("S3_BUCKET_NAME", "recruitai-resumes") # Alias from request
+    AWS_S3_BUCKET: str = os.getenv("AWS_S3_BUCKET", "recruit-rattanindia")
+    S3_BUCKET_NAME: str = os.getenv("S3_BUCKET_NAME", "recruit-rattanindia") # Alias from request
+    S3_PREFIX: str = os.getenv("S3_PREFIX", "") + ("/" if os.getenv("S3_PREFIX", "") and not os.getenv("S3_PREFIX", "").endswith("/") else "")
     
     # Redis URL for Celery
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")

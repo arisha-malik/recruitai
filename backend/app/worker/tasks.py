@@ -267,7 +267,82 @@ def parse_resume_job(self, resume_id: str, actor_id: Optional[str] = None):
         else:
             logger.info("Qdrant is disabled. Skipping vector embedding generation and Qdrant upsert.")
             
-        # 9. Mark resume parsing status as successful
+        # 9. Rename and move file to final storage path
+        import re
+        
+        raw_name = parsed_data.get("full_name") or f"{candidate.first_name} {candidate.last_name}".strip()
+        if not raw_name or raw_name.lower() in ["candidate", "pending"]:
+            raw_name = "candidate"
+            
+        designation = None
+        work_exp = parsed_data.get("work_experience") or []
+        if work_exp and isinstance(work_exp, list) and len(work_exp) > 0:
+            if isinstance(work_exp[0], dict) and work_exp[0].get("role"):
+                designation = work_exp[0].get("role")
+            elif isinstance(work_exp[0], dict) and work_exp[0].get("title"):
+                designation = work_exp[0].get("title")
+                
+        if not designation:
+            designation = candidate.current_company
+            
+        if not designation and candidate.skills and len(candidate.skills) > 0:
+            designation = candidate.skills[0]
+            
+        if not designation:
+            designation = candidate.domain or "tech-candidate"
+            
+        def sanitize_filename(s):
+            if not s: return "unknown"
+            s = str(s).lower()
+            s = re.sub(r'[^a-z0-9\s-]', '', s)
+            s = re.sub(r'[\s]+', '-', s)
+            return s.strip('-')
+            
+        sanitized_name = sanitize_filename(raw_name)
+        sanitized_role = sanitize_filename(designation)
+        short_id = resume.id.split('-')[0]
+        ext = os.path.splitext(resume.file_name)[1].lower()
+        
+        stored_filename = f"{sanitized_name}_{sanitized_role}_{short_id}{ext}"
+        candidate_field = sanitize_filename(candidate.domain or "uncategorized")
+        
+        new_s3_key = f"{settings.S3_PREFIX}Resume/{stored_filename}"
+        
+        try:
+            from app.services.s3_service import move_s3_object
+            move_s3_object(resume.s3_bucket, resume.s3_key, new_s3_key)
+            
+            resume.stored_filename = stored_filename
+            resume.storage_path = new_s3_key
+            resume.s3_key = new_s3_key
+            resume.candidate_primary_designation = designation
+            resume.primary_skill = candidate.skills[0] if candidate.skills else None
+            resume.candidate_field = candidate.domain
+            
+            skills_str = " ".join(candidate.skills) if candidate.skills else ""
+            search_lbl = f"{raw_name} {designation} {skills_str} {candidate.domain}".lower()
+            resume.searchable_storage_label = re.sub(r'[\s]+', ' ', search_lbl).strip()
+            
+            log_recruitment_event(
+                db=db,
+                event_type="RESUME_MOVED",
+                candidate_id=candidate.id,
+                resume_id=resume.id,
+                actor_id=actor_id,
+                metadata={"new_path": new_s3_key}
+            )
+        except Exception as move_err:
+            logger.error(f"Failed to move resume file to final path: {str(move_err)}")
+            log_recruitment_event(
+                db=db,
+                event_type="RESUME_MOVE_FAILED",
+                candidate_id=candidate.id,
+                resume_id=resume.id,
+                actor_id=actor_id,
+                metadata={"error": str(move_err)}
+            )
+
+        # 10. Mark resume parsing status as successful
         resume.parsing_status = ParsingStatus.PARSED
         resume.failure_reason = None
         db.commit()

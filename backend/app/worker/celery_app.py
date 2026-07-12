@@ -19,6 +19,8 @@ if not broker_url:
             broker_url = f"sqla+{db_url}"
         elif db_url.startswith("sqlite://"):
             broker_url = f"sqla+{db_url}"
+        elif db_url.startswith("mysql+pymysql://"):
+            broker_url = f"sqla+{db_url}"
         else:
             # Default to redis
             broker_url = settings.REDIS_URL
@@ -33,6 +35,8 @@ if not result_backend:
             result_backend = f"db+{db_url}"
         elif db_url.startswith("sqlite://"):
             result_backend = f"db+sqlite:///{db_url.split('sqlite:///')[-1]}"
+        elif db_url.startswith("mysql+pymysql://"):
+            result_backend = f"db+{db_url}"
         else:
             result_backend = settings.REDIS_URL
 

@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import List
 import uuid
 import os
@@ -71,7 +71,7 @@ def bulk_upload_resumes(
         db.add(candidate)
         
         resume_id = str(uuid.uuid4())
-        s3_key = f"resumes/{resume_id}/{file.filename}"
+        s3_key = f"{settings.S3_PREFIX}Resume/tmp/{resume_id}_{file.filename}"
         
         db_resume = Resume(
             id=resume_id,
@@ -111,6 +111,93 @@ def bulk_upload_resumes(
         ))
         
     return BulkUploadResponse(results=results)
+
+@router.post(
+    "/upload",
+    response_model=ParseResumeResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(RoleChecker([UserRole.ADMIN, UserRole.RECRUITER]))]
+)
+def upload_single_resume(
+    file: UploadFile = File(...),
+    first_name: str | None = Form(None),
+    last_name: str | None = Form(None),
+    email: EmailStr | None = Form(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    bucket_name = os.getenv("AWS_S3_BUCKET", "recruitai-resumes")
+    allowed_extensions = [".pdf", ".doc", ".docx"]
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in allowed_extensions:
+        raise HTTPException(status_code=400, detail=f"Invalid file type {ext}. Supported: PDF, DOC, DOCX")
+
+    # 1. Handle Candidate
+    if email:
+        candidate = db.query(Candidate).filter(Candidate.email == email).first()
+        if not candidate:
+            candidate = Candidate(
+                id=str(uuid.uuid4()),
+                first_name=first_name or "Unknown",
+                last_name=last_name or "Candidate",
+                email=email,
+                skills=[],
+                source="DIRECT_UPLOAD"
+            )
+            db.add(candidate)
+            db.commit()
+            db.refresh(candidate)
+    else:
+        placeholder_uuid = str(uuid.uuid4())
+        candidate = Candidate(
+            id=placeholder_uuid,
+            first_name="Pending",
+            last_name="Parsing",
+            email=f"pending-{placeholder_uuid}@recruitai.com",
+            skills=[],
+            source="DIRECT_UPLOAD"
+        )
+        db.add(candidate)
+        db.commit()
+        db.refresh(candidate)
+
+    # 2. Create Resume
+    resume_id = str(uuid.uuid4())
+    s3_key = f"{settings.S3_PREFIX}Resume/tmp/{resume_id}_{file.filename}"
+    
+    db_resume = Resume(
+        id=resume_id,
+        candidate_id=candidate.id,
+        file_name=file.filename,
+        original_filename=file.filename,
+        s3_key=s3_key,
+        s3_bucket=bucket_name,
+        parsing_status=ParsingStatus.UPLOADED
+    )
+    db.add(db_resume)
+
+    # 3. Store file and trigger parse
+    try:
+        store_uploaded_file(file, s3_key)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to store file: {str(e)}")
+
+    db_resume.parsing_status = ParsingStatus.PARSING
+    db.commit()
+
+    if settings.RUN_JOBS_SYNC:
+        task = parse_resume_job.apply(args=(resume_id, current_user.id))
+    else:
+        task = parse_resume_job.delay(resume_id, current_user.id)
+
+    return {
+        "jobId": str(task.id),
+        "resumeId": resume_id,
+        "status": ParsingStatus.PARSING
+    }
+
 
 @router.post(
     "/{resume_id}/parse", 

@@ -9,6 +9,7 @@ from app.models.user import UserRole
 from app.models.candidate import Candidate, Resume, ParsingStatus
 from app.services.s3_service import generate_presigned_post
 from app.dependencies import RoleChecker
+from app.config import settings
 
 router = APIRouter(prefix="/uploads", tags=["Uploads"])
 
@@ -68,7 +69,7 @@ def get_upload_url(
 
     # 2. Create Resume database entry
     resume_id = str(uuid.uuid4())
-    s3_key = f"resumes/{resume_id}/{req.file_name}"
+    s3_key = f"{settings.S3_PREFIX}Resume/tmp/{resume_id}_{req.file_name}"
     
     # Defaults bucket name
     bucket_name = os.getenv("AWS_S3_BUCKET", "recruitai-resumes")
@@ -77,6 +78,7 @@ def get_upload_url(
         id=resume_id,
         candidate_id=candidate.id,
         file_name=req.file_name,
+        original_filename=req.file_name,
         s3_key=s3_key,
         s3_bucket=bucket_name,
         parsing_status=ParsingStatus.UPLOADED
