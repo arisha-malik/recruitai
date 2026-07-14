@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import SettingsModal from "@/components/SettingsModal";
+import ProfileModal from "@/components/ProfileModal";
 import { 
   Sparkles, 
   LayoutDashboard, 
@@ -12,7 +14,6 @@ import {
   LogOut, 
   Menu, 
   X, 
-  Bell, 
   Search,
   UploadCloud,
   FileText,
@@ -27,6 +28,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<{ email: string; role: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -102,9 +105,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <header className="md:hidden bg-white border-b border-[#e6e9e4] px-6 py-4 flex items-center justify-between sticky top-0 z-40">
         <span className="text-xl font-black text-[#476353]">RecruitAI</span>
         <div className="flex items-center gap-3">
-          <button className="p-2 text-[#424844] hover:bg-[#f1f4f0] rounded-full transition-all">
-            <Bell className="w-5 h-5" />
-          </button>
           <button 
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-2 text-[#424844] hover:bg-[#f1f4f0] rounded-lg transition-all"
@@ -175,13 +175,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Sidebar Footer */}
         <div className="space-y-4 pt-6 border-t border-[#e6e9e4]">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3.5 px-4.5 py-2.5 rounded-xl text-sm font-semibold text-[#424844] hover:bg-white/50 hover:text-[#476353] transition-all"
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="w-full flex items-center gap-3.5 px-4.5 py-2.5 rounded-xl text-sm font-semibold text-[#424844] hover:bg-white/50 hover:text-[#476353] transition-all text-left"
           >
             <Settings className="w-5 h-5 text-[#727973]" />
             Settings
-          </Link>
+          </button>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3.5 px-4.5 py-2.5 rounded-xl text-sm font-semibold text-[#994236] hover:bg-[#ffdad4]/40 transition-all text-left"
@@ -221,20 +221,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             />
           </form>
           <div className="flex items-center gap-5">
-            <button className="p-2.5 text-[#424844] bg-white border border-[#e6e9e4] hover:bg-[#f1f4f0] rounded-xl transition-all relative">
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-[#994236] rounded-full"></span>
-            </button>
-            <div className="h-5 w-[1px] bg-[#e6e9e4]"></div>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
+            <button onClick={() => setIsProfileOpen(true)} className="flex items-center gap-3 hover:bg-white border border-transparent hover:border-[#e6e9e4] p-1.5 rounded-2xl transition-all text-left">
+              <div className="text-right hidden sm:block">
                 <p className="text-xs font-bold text-[#191c1a] capitalize">{nameDisplay}</p>
                 <p className="text-[10px] text-[#727973] capitalize">{roleDisplay}</p>
               </div>
               <div className="w-9 h-9 rounded-full bg-[#5f7c6b] text-white flex items-center justify-center text-xs font-bold shadow-sm">
                 {initialsDisplay}
               </div>
-            </div>
+            </button>
           </div>
         </header>
 
@@ -244,6 +239,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </main>
 
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} user={user} onLogout={handleLogout} />
     </div>
   );
 }

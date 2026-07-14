@@ -409,10 +409,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           </Card>
         ) : (
           <div className="space-y-4">
-            {matches.filter((m: any) => {
-              const app = applications.find((a: any) => a.id === m.application_id);
-              return !app || app.status === 'APPLIED' || app.status === 'MATCHED';
-            }).map((match) => {
+            {matches.map((match) => {
+              const app = applications.find((a: any) => a.id === match.application_id);
               const isExpanded = !!expandedCandidates[match.candidate_id];
               return (
                 <Card key={match.candidate_id} className="p-5 border-border/80 hover:border-indigo-500/20">
@@ -462,27 +460,27 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                       <div className="flex gap-2 mr-2" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
-                          disabled={decisionLoading === match.application_id}
+                          disabled={decisionLoading === match.application_id || app?.status === 'SHORTLISTED'}
                           onClick={() => handleDecision(match.application_id, 'SHORTLIST')}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 text-xs font-semibold rounded shadow-sm disabled:opacity-50 transition-colors"
+                          className={`flex items-center gap-1 px-3 py-1.5 border text-xs font-semibold rounded shadow-sm transition-colors ${
+                            app?.status === 'SHORTLISTED'
+                              ? 'bg-emerald-100 text-emerald-700 border-emerald-300 opacity-80 cursor-default'
+                              : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-200'
+                          }`}
                         >
-                          ✅ Shortlist
+                          {app?.status === 'SHORTLISTED' ? '✅ Shortlisted' : '✅ Shortlist'}
                         </button>
                         <button
                           type="button"
-                          disabled={decisionLoading === match.application_id}
-                          onClick={() => handleDecision(match.application_id, 'MAYBE')}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 text-xs font-semibold rounded shadow-sm disabled:opacity-50 transition-colors"
-                        >
-                          ❔ Maybe
-                        </button>
-                        <button
-                          type="button"
-                          disabled={decisionLoading === match.application_id}
+                          disabled={decisionLoading === match.application_id || app?.status === 'REJECTED'}
                           onClick={() => handleDecision(match.application_id, 'REJECT')}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 text-xs font-semibold rounded shadow-sm disabled:opacity-50 transition-colors"
+                          className={`flex items-center gap-1 px-3 py-1.5 border text-xs font-semibold rounded shadow-sm transition-colors ${
+                            app?.status === 'REJECTED'
+                              ? 'bg-rose-100 text-rose-700 border-rose-300 opacity-80 cursor-default'
+                              : 'bg-rose-50 text-rose-600 hover:bg-rose-100 border-rose-200'
+                          }`}
                         >
-                          ❌ Reject
+                          {app?.status === 'REJECTED' ? '❌ Rejected' : '❌ Reject'}
                         </button>
                       </div>
                       
