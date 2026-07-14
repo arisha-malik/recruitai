@@ -551,12 +551,38 @@ def run_candidate_matching_job(self, job_id: str, actor_id: Optional[str] = None
         total_checked = 0
         total_created = 0
         
+        # PRE-FETCH BULK DATA TO PREVENT N+1 QUERIES
+        from sqlalchemy.orm import joinedload
+        candidate_ids = [hit["candidate_id"] for hit in candidates_hits] if candidates_hits else []
+        
+        candidate_dict = {}
+        app_dict = {}
+        match_dict = {}
+        
+        if candidate_ids:
+            candidates = db.query(Candidate).options(
+                joinedload(Candidate.resumes).joinedload(Resume.parsed_data)
+            ).filter(Candidate.id.in_(candidate_ids)).all()
+            candidate_dict = {c.id: c for c in candidates}
+            
+            apps = db.query(Application).filter(
+                Application.job_id == job.id,
+                Application.candidate_id.in_(candidate_ids)
+            ).all()
+            app_dict = {app.candidate_id: app for app in apps}
+            
+            matches = db.query(MatchResult).filter(
+                MatchResult.job_id == job.id,
+                MatchResult.candidate_id.in_(candidate_ids)
+            ).all()
+            match_dict = {m.candidate_id: m for m in matches}
+        
         for hit in candidates_hits:
             candidate_id = hit["candidate_id"]
             vector_score = hit["score"]
             
-            # Fetch Candidate and ParsedResumeData
-            candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+            # Fetch Candidate and ParsedResumeData (from dictionary)
+            candidate = candidate_dict.get(candidate_id)
             if not candidate:
                 continue
                 
@@ -595,10 +621,7 @@ def run_candidate_matching_job(self, job_id: str, actor_id: Optional[str] = None
                 time.sleep(4.5) # Sleep to avoid 15 RPM rate limit
                 eval_res = matching_service.evaluate_match(job_data, candidate_info)
                 
-                app = db.query(Application).filter(
-                    Application.candidate_id == candidate.id,
-                    Application.job_id == job.id
-                ).first()
+                app = app_dict.get(candidate.id)
                 if not app:
                     import uuid as uuid_lib
                     app = Application(
@@ -611,10 +634,7 @@ def run_candidate_matching_job(self, job_id: str, actor_id: Optional[str] = None
                     db.flush()
                 app_id = app.id
                 
-                match_result = db.query(MatchResult).filter(
-                    MatchResult.candidate_id == candidate.id,
-                    MatchResult.job_id == job.id
-                ).first()
+                match_result = match_dict.get(candidate.id)
                 
                 is_new = match_result is None
                 if is_new:
