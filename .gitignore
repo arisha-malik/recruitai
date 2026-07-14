@@ -33,7 +33,10 @@ yarn-error.log*
 # 5. Uploads / Resumes / Generated Files
 uploads/
 media/
-resumes/
+# Ignore uploaded resumes but do not ignore frontend code routes
+/backend/resumes/
+/resumes/
+!frontend/src/app/(dashboard)/resumes/
 Resume/
 *.pdf
 *.doc
